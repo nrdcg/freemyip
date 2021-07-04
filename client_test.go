@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,7 @@ func setupTest(t *testing.T) (*Client, *http.ServeMux) {
 	t.Cleanup(server.Close)
 
 	client := New("token", true)
-	client.baseURL = server.URL
+	client.baseURL, _ = url.Parse(server.URL)
 
 	return client, mux
 }

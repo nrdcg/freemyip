@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -36,7 +37,7 @@ type query struct {
 // Client an API client for freemyip.
 type Client struct {
 	HTTPClient *http.Client
-	baseURL    string
+	baseURL    *url.URL
 
 	token   string
 	verbose bool
@@ -44,9 +45,11 @@ type Client struct {
 
 // New creates a new Client.
 func New(token string, verbose bool) *Client {
+	baseURL, _ := url.Parse(defaultBaseURL)
+
 	return &Client{
 		HTTPClient: &http.Client{Timeout: 10 * time.Second},
-		baseURL:    defaultBaseURL,
+		baseURL:    baseURL,
 		token:      token,
 		verbose:    verbose,
 	}
@@ -108,26 +111,26 @@ func (c Client) DeleteTXTRecord(ctx context.Context, domain string) (string, err
 }
 
 func (c Client) do(ctx context.Context, q query) (string, error) {
-	values, err := querystring.Values(q)
+	endpoint, err := c.baseURL.Parse(path.Join(c.baseURL.Path, "/"))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("URL parsing: %w", err)
 	}
 
-	endpoint, err := url.Parse(c.baseURL)
+	values, err := querystring.Values(q)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("query parameters: %w", err)
 	}
 
 	endpoint.RawQuery = values.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("creates request: %w", err)
 	}
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("do API call: %w", err)
 	}
 
 	defer func() { _ = resp.Body.Close() }()
@@ -139,7 +142,7 @@ func (c Client) do(ctx context.Context, q query) (string, error) {
 
 	all, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("reads response body: %w", err)
 	}
 
 	body := strings.TrimSpace(string(all))
