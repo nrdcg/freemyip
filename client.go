@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -123,7 +123,7 @@ func (c Client) do(ctx context.Context, q query) (string, error) {
 
 	endpoint.RawQuery = values.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), http.NoBody)
 	if err != nil {
 		return "", fmt.Errorf("creates request: %w", err)
 	}
@@ -136,11 +136,11 @@ func (c Client) do(ctx context.Context, q query) (string, error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		all, _ := ioutil.ReadAll(resp.Body)
+		all, _ := io.ReadAll(resp.Body)
 		return "", fmt.Errorf("error: %d: %s", resp.StatusCode, string(all))
 	}
 
-	all, err := ioutil.ReadAll(resp.Body)
+	all, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("reads response body: %w", err)
 	}
