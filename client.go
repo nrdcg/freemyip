@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 	"time"
 
@@ -111,10 +110,7 @@ func (c Client) DeleteTXTRecord(ctx context.Context, domain string) (string, err
 }
 
 func (c Client) do(ctx context.Context, q query) (string, error) {
-	endpoint, err := c.baseURL.Parse(path.Join(c.baseURL.Path, "/"))
-	if err != nil {
-		return "", fmt.Errorf("URL parsing: %w", err)
-	}
+	endpoint := c.baseURL.JoinPath("/")
 
 	values, err := querystring.Values(q)
 	if err != nil {
