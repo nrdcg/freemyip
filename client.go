@@ -17,7 +17,7 @@ import (
 // RootDomain the root domain of all domains.
 const RootDomain = "freemyip.com"
 
-const defaultBaseURL = "https://freemyip.com/update"
+const defaultBaseURL = "https://freemyip.com"
 
 const (
 	codeError = "ERROR"
@@ -54,10 +54,39 @@ func New(token string, verbose bool) *Client {
 	}
 }
 
+// CheckIP checks your current external IP address.
+func (c *Client) CheckIP(ctx context.Context) (string, error) {
+	endpoint := c.baseURL.JoinPath("checkip")
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), http.NoBody)
+	if err != nil {
+		return "", fmt.Errorf("creates request: %w", err)
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("do API call: %w", err)
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		all, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("error: %d: %s", resp.StatusCode, string(all))
+	}
+
+	all, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reads response body: %w", err)
+	}
+
+	return strings.TrimSpace(string(all)), nil
+}
+
 // UpdateDomain updates a domain.
 //   - `domain` is the custom part of the real domain. (ex: `YOUR_DOMAIN` in `YOUR_DOMAIN.freemyip.com`)
 //   - `myIP` is optional.
-func (c Client) UpdateDomain(ctx context.Context, domain, myIP string) (string, error) {
+func (c *Client) UpdateDomain(ctx context.Context, domain, myIP string) (string, error) {
 	q := query{
 		Token:   c.token,
 		Domain:  fmt.Sprintf("%s.%s", domain, RootDomain),
@@ -65,12 +94,12 @@ func (c Client) UpdateDomain(ctx context.Context, domain, myIP string) (string, 
 		Verbose: boolToString(c.verbose),
 	}
 
-	return c.do(ctx, q)
+	return c.doUpdate(ctx, q)
 }
 
 // DeleteDomain deletes a domain.
 //   - `domain` is the custom part of the real domain. (ex: `YOUR_DOMAIN` in `YOUR_DOMAIN.freemyip.com`)
-func (c Client) DeleteDomain(ctx context.Context, domain string) (string, error) {
+func (c *Client) DeleteDomain(ctx context.Context, domain string) (string, error) {
 	q := query{
 		Token:   c.token,
 		Domain:  fmt.Sprintf("%s.%s", domain, RootDomain),
@@ -78,13 +107,13 @@ func (c Client) DeleteDomain(ctx context.Context, domain string) (string, error)
 		Verbose: boolToString(c.verbose),
 	}
 
-	return c.do(ctx, q)
+	return c.doUpdate(ctx, q)
 }
 
 // EditTXTRecord creates or updates a TXT record value for a domain.
 //   - `domain` is the custom part of the real domain. (ex: `YOUR_DOMAIN` in `YOUR_DOMAIN.freemyip.com`)
 //   - `value` is the TXT record content.
-func (c Client) EditTXTRecord(ctx context.Context, domain, value string) (string, error) {
+func (c *Client) EditTXTRecord(ctx context.Context, domain, value string) (string, error) {
 	q := query{
 		Token:   c.token,
 		Domain:  fmt.Sprintf("%s.%s", domain, RootDomain),
@@ -92,13 +121,13 @@ func (c Client) EditTXTRecord(ctx context.Context, domain, value string) (string
 		Verbose: boolToString(c.verbose),
 	}
 
-	return c.do(ctx, q)
+	return c.doUpdate(ctx, q)
 }
 
 // DeleteTXTRecord delete a TXT record for a domain.
 //   - `domain` is the custom part of the real domain. (ex: `YOUR_DOMAIN` in `YOUR_DOMAIN.freemyip.com`)
 //   - `value` is the TXT record content.
-func (c Client) DeleteTXTRecord(ctx context.Context, domain string) (string, error) {
+func (c *Client) DeleteTXTRecord(ctx context.Context, domain string) (string, error) {
 	q := query{
 		Token:   c.token,
 		Domain:  fmt.Sprintf("%s.%s", domain, RootDomain),
@@ -106,11 +135,11 @@ func (c Client) DeleteTXTRecord(ctx context.Context, domain string) (string, err
 		Verbose: boolToString(c.verbose),
 	}
 
-	return c.do(ctx, q)
+	return c.doUpdate(ctx, q)
 }
 
-func (c Client) do(ctx context.Context, q query) (string, error) {
-	endpoint := c.baseURL.JoinPath("/")
+func (c *Client) doUpdate(ctx context.Context, q query) (string, error) {
+	endpoint := c.baseURL.JoinPath("update")
 
 	values, err := querystring.Values(q)
 	if err != nil {

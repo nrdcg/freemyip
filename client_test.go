@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,7 +43,7 @@ func testHandler(body string) http.HandlerFunc {
 func TestClient_UpdateDomain(t *testing.T) {
 	client, mux := setupTest(t)
 
-	mux.HandleFunc("/", testHandler("OK\nIP 81.220.38.196 didn't change. No need to update record."))
+	mux.HandleFunc("/update", testHandler("OK\nIP 81.220.38.196 didn't change. No need to update record."))
 
 	_, err := client.UpdateDomain(context.Background(), "example", "")
 	require.NoError(t, err)
@@ -51,7 +52,7 @@ func TestClient_UpdateDomain(t *testing.T) {
 func TestClient_UpdateDomain_error(t *testing.T) {
 	client, mux := setupTest(t)
 
-	mux.HandleFunc("/", testHandler("ERROR\nToken not provided"))
+	mux.HandleFunc("/update", testHandler("ERROR\nToken not provided"))
 
 	_, err := client.UpdateDomain(context.Background(), "example", "")
 	require.Error(t, err)
@@ -60,7 +61,7 @@ func TestClient_UpdateDomain_error(t *testing.T) {
 func TestClient_DeleteDomain(t *testing.T) {
 	client, mux := setupTest(t)
 
-	mux.HandleFunc("/", testHandler("OK\nmessage"))
+	mux.HandleFunc("/update", testHandler("OK\nmessage"))
 
 	_, err := client.DeleteDomain(context.Background(), "example")
 	require.NoError(t, err)
@@ -69,7 +70,7 @@ func TestClient_DeleteDomain(t *testing.T) {
 func TestClient_DeleteDomain_error(t *testing.T) {
 	client, mux := setupTest(t)
 
-	mux.HandleFunc("/", testHandler("ERROR\nToken not provided"))
+	mux.HandleFunc("/update", testHandler("ERROR\nToken not provided"))
 
 	_, err := client.DeleteDomain(context.Background(), "example")
 	require.Error(t, err)
@@ -78,7 +79,7 @@ func TestClient_DeleteDomain_error(t *testing.T) {
 func TestClient_EditTXTRecord(t *testing.T) {
 	client, mux := setupTest(t)
 
-	mux.HandleFunc("/", testHandler("OK\nUpdated TXT for domain example.freemyip.com to: value"))
+	mux.HandleFunc("/update", testHandler("OK\nUpdated TXT for domain example.freemyip.com to: value"))
 
 	_, err := client.EditTXTRecord(context.Background(), "example", "value")
 	require.NoError(t, err)
@@ -87,7 +88,7 @@ func TestClient_EditTXTRecord(t *testing.T) {
 func TestClient_EditTXTRecord_error(t *testing.T) {
 	client, mux := setupTest(t)
 
-	mux.HandleFunc("/", testHandler("ERROR\nToken not provided"))
+	mux.HandleFunc("/update", testHandler("ERROR\nToken not provided"))
 
 	_, err := client.EditTXTRecord(context.Background(), "example", "value")
 	require.Error(t, err)
@@ -96,7 +97,7 @@ func TestClient_EditTXTRecord_error(t *testing.T) {
 func TestClient_DeleteTXTRecord(t *testing.T) {
 	client, mux := setupTest(t)
 
-	mux.HandleFunc("/", testHandler("OK\nUpdated TXT for domain example.freemyip.com to: null"))
+	mux.HandleFunc("/update", testHandler("OK\nUpdated TXT for domain example.freemyip.com to: null"))
 
 	_, err := client.DeleteTXTRecord(context.Background(), "example")
 	require.NoError(t, err)
@@ -105,8 +106,19 @@ func TestClient_DeleteTXTRecord(t *testing.T) {
 func TestClient_DeleteTXTRecord_error(t *testing.T) {
 	client, mux := setupTest(t)
 
-	mux.HandleFunc("/", testHandler("ERROR\nToken not provided"))
+	mux.HandleFunc("/update", testHandler("ERROR\nToken not provided"))
 
 	_, err := client.DeleteTXTRecord(context.Background(), "example")
 	require.Error(t, err)
+}
+
+func TestClient_CheckIP(t *testing.T) {
+	client, mux := setupTest(t)
+
+	mux.HandleFunc("/checkip", testHandler("127.0.0.1"))
+
+	ip, err := client.CheckIP(context.Background())
+	require.NoError(t, err)
+
+	assert.Equal(t, "127.0.0.1", ip)
 }
